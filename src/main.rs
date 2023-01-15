@@ -82,8 +82,10 @@ fn main() -> ! {
             // Inclusive, and goes from large value to small
             let count_down = CountDown::new(i);
             let mut buffer = [0u8; 9];
-            let time_left_str = count_down.to_str(&mut buffer);
-            lcd.clear_print("Measures in", time_left_str);
+            match count_down.to_str(&mut buffer) {
+                Ok(time_left_str) => lcd.clear_print("Measures in", time_left_str),
+                Err(_) => lcd.clear_print("Error converting", "time to UTF-8"),
+            }
             delay_ms(60_000);
         }
         lcd.clear_print("Measures in", "less than 1 min");
@@ -138,7 +140,7 @@ impl CountDown {
         }
     }
 
-    /// Converts hours and minutes UTF-8 slice corresponding to "[hh]h:[mm]min"
+    /// Converts hours and minutes to "[hh]h:[mm]min" str
     ///
     /// # Examples
     ///
@@ -149,7 +151,7 @@ impl CountDown {
     /// let expected_result = "07h:23min";
     /// assert_eq!(count_down_str, expected_result);
     /// ```
-    fn to_str<'a>(self, buffer: &'a mut [u8; 9]) -> &'a str {
+    fn to_str<'a>(self, buffer: &'a mut [u8; 9]) -> Result<&str, core::str::Utf8Error> {
         if self.hours_left < 100 && self.mins_left < 100 {
             *buffer = [48, 48, 104, 58, 48, 48, 109, 105, 110]; // [0, 0, h, :, 0, 0, m, i, n]
             let mut i = 6; // Starts at 1 index after last '0'
@@ -157,6 +159,6 @@ impl CountDown {
             i = 2;
             Self::num_to_utf8slice(self.hours_left, buffer, i);
         }
-        core::str::from_utf8(&buffer[0..]).unwrap()
+        core::str::from_utf8(&buffer[0..])
     }
 }
