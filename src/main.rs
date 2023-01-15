@@ -81,8 +81,6 @@ fn main() -> ! {
         for i in (1..=t_next_check_mins).rev() {
             // Inclusive, and goes from large value to small
             let count_down = CountDown::new(i);
-            lcd.clear();
-            delay_ms(1000);
             let mut buffer = [0u8; 9];
             let time_left_str = count_down.to_str(&mut buffer);
             lcd.clear_print("Measures in", time_left_str);
@@ -104,6 +102,8 @@ where
     D: embedded_hal::blocking::delay::DelayUs<u16> + Sized,
 {
     fn clear_print(&mut self, first_row: &str, second_row: &str) {
+        self.clear(); // clear(), delay(), clear() (instead of just one clear()) raises the probability substantially that the screen will be propely cleared.
+        delay_us(100);
         self.clear();
         self.set_position(0, 0);
         self.print(first_row);
