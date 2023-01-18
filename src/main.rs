@@ -3,8 +3,14 @@
 #![allow(unused_imports)]
 
 use ag_lcd::{Display, LcdDisplay};
-use arduino_hal::{delay_ms, delay_us, prelude::*}; // prelude used for serial and printing to computer
+use arduino_hal::{delay_ms, delay_us};
 use panic_halt as _;
+
+// When the Arduino is connected to a computer, text can be printed to the computer screen by
+// adding the following lines:
+// use arduino_hal::prelude::*;
+// let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
+// ufmt::uwriteln!(&mut serial, "Printed on computer screen: {} ", t_pump_on).void_unwrap();
 
 #[arduino_hal::entry]
 fn main() -> ! {
@@ -37,6 +43,8 @@ fn main() -> ! {
         .with_lines(ag_lcd::Lines::TwoLines)
         .build();
 
+    lcd.ensure_inti(); // Initializes the LCD more reliably.
+
     // Setting sensor value limits
     let water_sensor_limit = 100; // Value above indicates sensor is in contact with water
     let moisture_sensor_lower_limit = 20; // Value below this indicates that moisture sensor is not placed in soil
@@ -53,10 +61,6 @@ fn main() -> ! {
 
     let t_next_check_mins = t_next_check_ms / 60_000;
     let t_next_check_remainder_ms = (t_next_check_ms % 60_000) as u16;
-
-    // Used when Arduino is connected to computer. Used by ufmt::uwriteln!() to get outputs.
-    // let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
-    // ufmt::uwriteln!(&mut serial, "t_pump_on: {} ", t_pump_on).void_unwrap();
 
     loop {
         d8.set_high(); // Turns on water sensor
@@ -93,26 +97,41 @@ fn main() -> ! {
     }
 }
 
-trait ClearPrint {
-    /// Clears the LCD before printing on both lines.
-    fn clear_print(&mut self, _first_row: &str, _second_row: &str) {}
+/// Trait containing extra methods for struct LcdDisplay, defined in dependency.
+trait LcdDisplayExtra {
+    fn clear_print(&mut self, _first_row: &str, _second_row: &str);
+    fn ensure_inti(&mut self);
 }
 
-impl<T, D> ClearPrint for LcdDisplay<T, D>
+impl<T, D> LcdDisplayExtra for LcdDisplay<T, D>
 where
     T: embedded_hal::digital::v2::OutputPin<Error = core::convert::Infallible> + Sized,
     D: embedded_hal::blocking::delay::DelayUs<u16> + Sized,
 {
+    /// Clears the LCD before printing on both lines. Small delays are present between some
+    /// actions for more reliable execution. E.g, clearing the screen once in the beginning
+    /// is sometimes not enough, neither twice without the delay.
     fn clear_print(&mut self, first_row: &str, second_row: &str) {
-        self.clear(); // clear(), delay(), clear() (instead of just one clear()) raises the probability substantially that the screen will be propely cleared.
+        self.clear();
         delay_us(100);
         self.clear();
         self.set_position(0, 0);
         self.print(first_row);
-        delay_us(100); // A delay, even a very small one, is needed between printing and setting a new position. A bit unreliable how large delay needs to be.
+        delay_us(100);
         self.set_position(0, 1);
         self.print(second_row);
         self.set_position(0, 0)
+    }
+
+    /// LCDs can be a bit flaky with their normal initialization (via `.build()`). This method  
+    /// is run after build to more reliably initialize the LCD.
+    fn ensure_inti(&mut self) {
+        for _ in 0..3 {
+            delay_ms(100);
+            self.display_off();
+            delay_ms(100);
+            self.display_on();
+        }
     }
 }
 
