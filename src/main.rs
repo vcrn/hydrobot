@@ -100,7 +100,7 @@ fn main() -> ! {
 /// Trait containing extra methods for struct LcdDisplay, defined in dependency.
 trait LcdDisplayExtra {
     fn clear_print(&mut self, _first_row: &str, _second_row: &str);
-    fn ensure_inti(&mut self);
+    fn ensure_init(&mut self);
 }
 
 impl<T, D> LcdDisplayExtra for LcdDisplay<T, D>
