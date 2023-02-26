@@ -43,7 +43,7 @@ fn main() -> ! {
         .with_lines(ag_lcd::Lines::TwoLines)
         .build();
 
-    lcd.ensure_inti(); // Initializes the LCD more reliably.
+    lcd.ensure_init(); // Initializes the LCD more reliably.
 
     // Setting sensor value limits
     let water_sensor_limit = 100; // Value above indicates sensor is in contact with water
@@ -125,7 +125,7 @@ where
 
     /// LCDs can be a bit flaky with their normal initialization (via `.build()`). This method  
     /// is run after build to more reliably initialize the LCD.
-    fn ensure_inti(&mut self) {
+    fn ensure_init(&mut self) {
         for _ in 0..3 {
             delay_ms(100);
             self.display_off();
